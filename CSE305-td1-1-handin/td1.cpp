@@ -165,14 +165,21 @@ std::vector<int>::const_iterator end, size_t num_threads) {
 }
 
 //-----------------------------------------------------------------------------
-
-
-
 template <typename Iter, typename T>
-
-int IsFound(Iter begin, Iter end, T target, size_t num_threads){
-    
-    for()
+int FindTarget(Iter begin, Iter end, T target, bool &found){
+    Iter it = begin;
+    while(it!=end){
+        if (found==true){
+            return 0;
+        }
+        else{
+            if(*it==target){
+                found = true;
+            }
+        }
+        it++;
+    }
+    return 0;
 }
 
 /**
@@ -183,13 +190,41 @@ int IsFound(Iter begin, Iter end, T target, size_t num_threads){
  * @param num_threads The number of threads to use
  * @return The sum in the range
 */
+template <typename Iter, typename T>
 bool FindParallel(Iter begin, Iter end, T target, size_t num_threads) {
     // YOUR CODE HERE (AND MAYBE AN AUXILIARY FUNCTION OUTSIDE)
+    bool found = false;
+    unsigned long const length = std::distance(begin,end);//length of the vector
+    if(!length) return false;
+
+    unsigned long const block_size = length/num_threads;
+
+    // std::vector<Num> results(num_threads, 0.);
+    std::vector<std::thread> workers(num_threads - 1);
+    Iter start_block = begin;
+    for(size_t i=0; i<num_threads-1; ++i){
+        Iter end_block = start_block + block_size; 
+        workers[i] = std::thread(&FindTarget<Iter,T>, start_block, end_block,target,
+        std::ref(found));
+        start_block = end_block;
+    }
+    FindTarget(start_block, end,target,std::ref(found));
+    for (size_t i = 0; i < num_threads - 1; ++i) {
+        workers[i].join();
+    }
+    return found;
     return false;
 }
 
 //-----------------------------------------------------------------------------
 
+template <typename ArgType, typename ReturnType>
+int CheckRetType(ReturnType f(ArgType), ArgType arg,
+std::shared_ptr<ReturnType> retType , std::optional<ReturnType> &ret){
+    *retType = f(arg);
+    ret = *retType;
+    return 0;
+}
 
 /**
  * @brief Runs a function and checks whether it finishes within a timeout
@@ -201,6 +236,15 @@ bool FindParallel(Iter begin, Iter end, T target, size_t num_threads) {
 template <typename ArgType, typename ReturnType>
 std::optional<ReturnType> RunWithTimeout(ReturnType f(ArgType), ArgType arg, size_t timeout) {
     // YOUR CODE HERE (AND MAYBE AN AUXILIARY FUNCTION OUTSIDE)
+    std::optional<ReturnType> ret;
+    std::shared_ptr<ReturnType> retType = std::make_shared<ReturnType>();
+    std::thread worker(&CheckRetType<ArgType, ReturnType>, f, arg,
+    retType, ref(ret));
+    // CheckRetType(f, arg, retType);
+    worker.detach();
+    std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
+    // ret = *retType;
+    return ret;
     return {};
 }
 
