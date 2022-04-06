@@ -11,11 +11,11 @@ typedef std::vector<long double>::const_iterator NumIter;
 
 //-----------------------------------------------------------------------------
 
-void SumMapThread(NumIter begin, NumIter end,/* Num f(Num),*/ long double& result) {
+void SumMapThread(NumIter begin, NumIter end, Num f(Num), long double& result) {
     // YOUR CODE HERE
     Num local_result = 0;
     while (begin!=end){
-        local_result+= *begin;
+        local_result+= f(*begin);
         begin++;
     }
     result = local_result;
@@ -28,10 +28,10 @@ void SumMapThread(NumIter begin, NumIter end,/* Num f(Num),*/ long double& resul
  * @param f Function to apply
  * @param result Reference to the result variable
  */
-Num SumParallel(NumIter begin, NumIter end,/* Num f(Num),*/ size_t num_threads) {
+Num SumParallel(NumIter begin, NumIter end, Num f(Num), size_t num_threads) {
     // YOUR CODE HERE
     unsigned long const length = std::distance(begin,end);//length of the vector
-    if(!len) return 0.;
+    if(!length) return 0.;
 
     unsigned long const block_size = length/num_threads;
 
@@ -40,10 +40,11 @@ Num SumParallel(NumIter begin, NumIter end,/* Num f(Num),*/ size_t num_threads) 
     NumIter start_block = begin;
     for(size_t i=0; i<num_threads-1; ++i){
         NumIter end_block = start_block + block_size; 
-        workers[i] = std::thread(&SumMapThread, start_block, end_block, std::ref(results[i]));
+        workers[i] = std::thread(&SumMapThread, start_block, end_block,f,
+        std::ref(results[i]));
         start_block = end_block;
     }
-    SumMapThread(start_block, end, results[num_threads - 1]);
+    SumMapThread(start_block, end,f, results[num_threads - 1]);
     for (size_t i = 0; i < num_threads - 1; ++i) {
         workers[i].join();
     }
@@ -58,6 +59,10 @@ Num SumParallel(NumIter begin, NumIter end,/* Num f(Num),*/ size_t num_threads) 
 
 //-----------------------------------------------------------------------------
 
+Num retItself(Num num){
+    return num;
+}
+
 /**
  * @brief Computes the mean of the numbers in [begin, end)
  * @param begin Start iterator
@@ -67,10 +72,17 @@ Num SumParallel(NumIter begin, NumIter end,/* Num f(Num),*/ size_t num_threads) 
 */
 Num MeanParallel(NumIter begin, NumIter end, size_t num_threads) {
     // YOUR CODE HERE
+    unsigned long const length = std::distance(begin,end);//length of the vector
+    Num sum = SumParallel(begin,end,retItself,num_threads);
+    return sum/length;
     return 0;
 }
 
 //-----------------------------------------------------------------------------
+
+Num retSquared(Num num){
+    return num*num;
+}
 
 /**
  * @brief Computes the variance of the numbers in [begin, end)
@@ -81,12 +93,32 @@ Num MeanParallel(NumIter begin, NumIter end, size_t num_threads) {
 */
 Num VarianceParallel(NumIter begin, NumIter end, size_t num_threads) {
     // YOUR CODE HERE
+    unsigned long const length = std::distance(begin,end);//length of the vector
+    Num mean = MeanParallel(begin, end, num_threads);
+    Num meanOnSquared = SumParallel(begin,end, retSquared, num_threads)/length;
+    return (meanOnSquared - (mean*mean));
     return 0;
 }
 
 //-----------------------------------------------------------------------------
 
-
+void FindMinInBlock(std::vector<int>::const_iterator begin,
+std::vector<int>::const_iterator end, std::pair<int,int>& result){
+    std::pair<int,int> local_result = {*begin,0};
+    auto it = begin;
+    while (it!=end){
+        if(local_result.first>*it){
+            local_result.first = *it;
+            local_result.second = 1;
+        }
+        else if(local_result.first==*it){
+            local_result.second += 1;
+        }
+        it++;
+    }
+    result = local_result;
+    return;
+}
 
 /**
  * @brief Computs the occurences of the minimal value in [begin, end)
@@ -95,13 +127,53 @@ Num VarianceParallel(NumIter begin, NumIter end, size_t num_threads) {
  * @param num_threads The number of threads to use
  * @return the number of occurences of the minimal value in [begin, end)
 */
-int CountMinsParallel(std::vector<int>::const_iterator begin, std::vector<int>::const_iterator end, size_t num_threads) {
+int CountMinsParallel(std::vector<int>::const_iterator begin,
+std::vector<int>::const_iterator end, size_t num_threads) {
     // YOUR CODE HERE
+    unsigned long const length = std::distance(begin,end);//length of the vector
+    if(!length) return 0.;
+
+    unsigned long const block_size = length/num_threads;
+
+    std::vector<std::pair<int,int>> results(num_threads);
+    std::vector<std::thread> workers(num_threads - 1);
+    auto start_block = begin;
+    for(size_t i=0; i<num_threads-1; ++i){
+        auto end_block = start_block + block_size; 
+        workers[i] = std::thread(&FindMinInBlock, start_block, end_block,
+        std::ref(results[i]));
+        start_block = end_block;
+    }
+    FindMinInBlock(start_block, end, results[num_threads - 1]);
+    for (size_t i = 0; i < num_threads - 1; ++i) {
+        workers[i].join();
+    }
+
+    int total_result = 0;
+    int total_min = *begin;
+    for (size_t i = 0; i < results.size(); ++i) {
+        if(total_min>results[i].first){
+            total_min = results[i].first;
+            total_result=results[i].second;
+        }
+        else if(total_min==results[i].first){
+            total_result+=results[i].second;
+        }
+    }
+    return total_result;
     return 0;
 }
 
 //-----------------------------------------------------------------------------
 
+
+
+template <typename Iter, typename T>
+
+int IsFound(Iter begin, Iter end, T target, size_t num_threads){
+    
+    for()
+}
 
 /**
  * @brief Finds target in [begin, end)
@@ -111,7 +183,6 @@ int CountMinsParallel(std::vector<int>::const_iterator begin, std::vector<int>::
  * @param num_threads The number of threads to use
  * @return The sum in the range
 */
-template <typename Iter, typename T>
 bool FindParallel(Iter begin, Iter end, T target, size_t num_threads) {
     // YOUR CODE HERE (AND MAYBE AN AUXILIARY FUNCTION OUTSIDE)
     return false;
