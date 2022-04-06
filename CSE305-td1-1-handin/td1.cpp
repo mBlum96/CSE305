@@ -220,8 +220,10 @@ bool FindParallel(Iter begin, Iter end, T target, size_t num_threads) {
 
 template <typename ArgType, typename ReturnType>
 int CheckRetType(ReturnType f(ArgType), ArgType arg,
-std::shared_ptr<ReturnType> retType /*, std::optional<ReturnType> &ret*/){
+std::shared_ptr<ReturnType> retType,
+std::shared_ptr<int> monitoringVar){
     *retType = f(arg);
+    *monitoringVar = 1;
     return 0;
 }
 
@@ -235,13 +237,19 @@ std::shared_ptr<ReturnType> retType /*, std::optional<ReturnType> &ret*/){
 template <typename ArgType, typename ReturnType>
 std::optional<ReturnType> RunWithTimeout(ReturnType f(ArgType), ArgType arg, size_t timeout) {
     // YOUR CODE HERE (AND MAYBE AN AUXILIARY FUNCTION OUTSIDE)
+    std::optional<ReturnType> defaultRet;
     std::shared_ptr<ReturnType> retType = std::make_shared<ReturnType>();
+    std::shared_ptr<int> monitoringVar = std::make_shared<int>();
+    *monitoringVar = 0;
     std::thread worker(&CheckRetType<ArgType, ReturnType>, f, arg,
-    retType);
-    worker.detach();
+    retType, monitoringVar);
     std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
-    return *retType;
-    // return {};
+    worker.detach();
+    if(*monitoringVar==1){
+        return *retType;
+    };
+    return defaultRet;
+    return {};
 }
 
 //-----------------------------------------------------------------------------
