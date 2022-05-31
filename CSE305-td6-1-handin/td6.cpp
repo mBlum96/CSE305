@@ -80,7 +80,6 @@ Node* FineBST::search(Node* root, long k) {
         cur->lock.lock();
         pred->lock.unlock();
     }
-    // cur->lock.unlock();
     return cur;
 }
 
@@ -92,11 +91,8 @@ bool FineBST::contains(long k) {
 
 bool FineBST::add(long k) {
     Node* cur = FineBST::search(this->root, k);
-    // cur->lock.lock();
-    // std::lock_guard<std::mutex> lck(cur->lock);
     if (cur->key == k) {
         cur->lock.unlock();
-        // lck.unlock();
         return false;
     }
     Node* new_node = new Node(k);
@@ -107,15 +103,10 @@ bool FineBST::add(long k) {
         cur->right = new_node;
     }
     cur->lock.unlock();
-    // lck.unlock();
     return true;
 }
 
 void FineBST::remove_node(Node* n) {
-    // std::lock_guard<std::mutex> lck(n->lock);
-    n->parent->lock.unlock();
-    n->lock.lock();
-    // std::unique_lock<std::mutex> lck(n->lock);
     if (n->left == NULL || n->right == NULL) {
         Node* replacement = NULL;
         if (n->left != NULL) {
@@ -125,6 +116,7 @@ void FineBST::remove_node(Node* n) {
             replacement = n->right;
         }
         if (replacement != NULL) {
+            // replacement->lock.lock();
             replacement->parent = n->parent;
         }
         if (n->parent->left == n) {
@@ -132,30 +124,35 @@ void FineBST::remove_node(Node* n) {
         } else {
             n->parent->right = replacement;
         }
+        // if(replacement!=NULL){
+        //     replacement->lock.lock();
+        // }
         // n->lock.unlock();
-        // lck.unlock();
         delete n;
+        // if(replacement!=NULL){
+        //     replacement->lock.unlock();
+        // }
     } else {
         Node* replacement = FineBST::search(n->right, n->key);
         // replacement->lock.lock();
         n->key = replacement->key;
         // n->lock.unlock();
-        // std::unique_lock<std::mutex> rep_lck(replacement->lock);
-        // lck.unlock();
         FineBST::remove_node(replacement);
+        // replacement->lock.unlock();
     }
+
+    n->lock.unlock();
 }
 
 bool FineBST::remove(long k) {
     Node* cur = FineBST::search(this->root, k);
-    // cur->lock.lock();
-    cur->lock.unlock();
-
+    bool ret = true;
     if (cur->key != k) {
-        // cur->lock.unlock();
-        return false;
+        ret = false;
+        cur->lock.unlock();
+        return ret;
     }
     FineBST::remove_node(cur);
     // cur->lock.unlock();
-    return true;
+    return ret;
 }
