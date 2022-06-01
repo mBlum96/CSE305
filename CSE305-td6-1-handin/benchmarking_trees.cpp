@@ -92,9 +92,6 @@ Time for multi thread fine-grained version is 454 microseconds
 Time for multi thread coare-grained version is 6197 microseconds
 Time for multi thread fine-grained version is 21676 microseconds
 
-
-We see that when we increase the number of isertions the coarse grain
-version performs better, that is because there is less wait for a lock.
 This makes sense because when we do the fine grained way, we switch locks
 a lot more often than in the coarse grained one.
 If we think about it, it is similar to comparing exp(x) and x functions, the exp(x)
