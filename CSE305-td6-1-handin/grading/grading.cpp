@@ -74,6 +74,7 @@ template <typename Tree>
 void remover(Tree& BST, int offset, int upper, int step, bool& failure) {
     for (int i = offset; i < upper; i += step) {
         if (!BST.remove(i)) {
+            std::cout<<"the offender is "<< i<<std::endl;
             failure = true;
         }
     }
@@ -104,7 +105,7 @@ int test_remove(std::ostream &out, const std::string test_name) {
     }
 
     if (failed_removal) {
-        print(out, "Removal failed unexpectedly");
+        print(out, "Removal failed unexpectedly\n");
         res.push_back(0);
     } else {
         res.push_back(1);
@@ -112,7 +113,7 @@ int test_remove(std::ostream &out, const std::string test_name) {
 
     for (int i = 0; i < upper; ++i) {
         if (BST.contains(i)) {
-            print(out, "Removal did not happen or search is working incorrectly");
+            print(out, "Removal did not happen or search is working incorrectly\n");
             res.push_back(0);
         } else {
             res.push_back(1);

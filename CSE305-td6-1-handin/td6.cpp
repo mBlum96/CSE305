@@ -64,21 +64,37 @@ FineBST::~FineBST() {
 }
 
 Node* FineBST::search(Node* root, long k) {
-    root->lock.lock();
     Node *pred,*cur;
-    cur = root;
-    pred = nullptr;
+    pred = root;
+    pred->lock.lock();
+    if(pred->key ==k) return pred;
+    if(k>pred->key){
+        if(!pred->right){
+            return pred;
+        }
+        cur = pred->right;
+    }
+    else{
+        if(!pred->left){
+            return pred;
+        }
+        cur = pred->left;
+    }
+    cur->lock.lock();
     while ((k > cur->key && cur->right != NULL) ||
      (k < cur->key && cur->left != NULL)) {
-        pred = cur;
         if (k > cur->key) {
-	        cur = cur->right;
+	        pred->lock.unlock();
+            cur->right->lock.lock();
+            pred=cur;
+            cur = cur->right;
         }
         else {
+            pred->lock.unlock();
+            cur->left->lock.lock();
+            pred=cur;
             cur = cur->left;
         }
-        cur->lock.lock();
-        pred->lock.unlock();
     }
     return cur;
 }
@@ -86,6 +102,9 @@ Node* FineBST::search(Node* root, long k) {
 bool FineBST::contains(long k) {
     Node* cur = FineBST::search(this->root, k);
     cur->lock.unlock();
+    if (cur != this->root){
+        cur->parent->lock.unlock();
+    }
     return cur->key == k;
 }
 
@@ -103,6 +122,9 @@ bool FineBST::add(long k) {
         cur->right = new_node;
     }
     cur->lock.unlock();
+    if (cur != this->root){
+        cur->parent->lock.unlock();
+    }
     return true;
 }
 
@@ -112,37 +134,31 @@ void FineBST::remove_node(Node* n) {
         if (n->left != NULL) {
             replacement = n->left;
         }
-        if (n->right != NULL) {
+        else{
             replacement = n->right;
-        }
-        if (replacement != NULL) {
-            // replacement->lock.lock();
-            replacement->parent = n->parent;
         }
         if (n->parent->left == n) {
             n->parent->left = replacement;
-        } else {
-            n->parent->right = replacement;
         }
-        // if(replacement!=NULL){
-        //     replacement->lock.lock();
-        // }
-        // n->lock.unlock();
-        delete n;
-        // if(replacement!=NULL){
-        //     replacement->lock.unlock();
-        // }
-    } else {
-        Node* replacement = FineBST::search(n->right, n->key);
-        // replacement->lock.lock();
-        n->key = replacement->key;
-        // n->lock.unlock();
-        FineBST::remove_node(replacement);
-        // replacement->lock.unlock();
-    }
+        else {
+            n->parent->right = replacement;
 
-    n->lock.unlock();
+        }
+        if (replacement != NULL) {
+            replacement->parent = n->parent;
+        }
+        n->parent->lock.unlock();
+
+        delete n;
+    }
+    else{
+        Node* replacement = FineBST::search(n->right, n->key);
+        n->key = replacement->key;
+        n->parent->lock.unlock();
+        FineBST::remove_node(replacement);
+    }
 }
+
 
 bool FineBST::remove(long k) {
     Node* cur = FineBST::search(this->root, k);
@@ -152,7 +168,9 @@ bool FineBST::remove(long k) {
         cur->lock.unlock();
         return ret;
     }
+    
     FineBST::remove_node(cur);
+    ret=true;
     // cur->lock.unlock();
     return ret;
 }

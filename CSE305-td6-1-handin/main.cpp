@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 #else
     // RUN THE AUTOMATIC GRADER
     {
-      int test_number = 1; // run all the tests
+      int test_number = 0; // run all the tests
 
       if (argc == 2) {
         test_number = stoi(argv[1]);
